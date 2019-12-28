@@ -6,23 +6,28 @@ base structure for simple REST API implementations in Go
 ## About
 this package is meant to be used as a base structure for Go projects involving REST APIs
 
-Goals
+Goals:
 * Offer a practical structure for a basic web application
 * Use a modular and practical setup
-* Support for any database  *gorm.DB
+* Support for any database supported by GORM
 
-Dependencies
+Dependencies:
 * Gin framework
 * Gorm database ORM
 
 ## Features
-The following features are currently supported
+The following features are currently supported:
 * REST API
-* Users
+* Users and operations
+
+## Roadmap
+Important items:
+* events (new user, deleted user, logged in)
+* roles
+* authentication and authorization
 
 ## Requirements
-you need a database that is supported by gorm see also [the Gorm documentation](https://gorm/io)
-then you can insert the ORM into the `RunApp` function like below:
+you need a database that is supported by gorm see also [the Gorm documentation](https://gorm/io) . you can insert the ORM into the `RunApp` function like below:
 
 ```go
 // connect to postgres
@@ -34,14 +39,14 @@ if err != nil {
 }
 
 // run the web application
-    log.Fatal(RunApp(":8080", orm))
+log.Fatal(RunApp(":8080", orm))
 ```
 
-you need to have the following environment variables or cli flags to connect to postgres
-*pghost
-*pgdatabase
-*pguser
-*pgpass
+you need to have the following environment variables or cli flags to connect to postgres:
+* pghost
+* pgdatabase
+* pguser
+* pgpass
 
 ## Getting started
 in the main function, you can see that the environment variables are parsed and that an ORM instance was provided to the RunApp function that specifies all the current routes. the `GetParams` function can be adapted to your needs.
