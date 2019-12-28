@@ -7,6 +7,6 @@ import (
 // User is a user object
 type User struct {
 	gorm.Model
-	Alias    string `gorm:"column:alias;unique" json:"alias"`
-	Password string `gorm:"column:password" json:"password"`
+	Alias    string `gorm:"column:alias;unique" json:"Alias"`
+	Password string `gorm:"column:password" json:"PasswordHash"`
 }

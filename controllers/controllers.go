@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/jelmerdereus/goweb3/datastore"
+	"github.com/jelmerdereus/gowebtemplate/datastore"
 	"net/http"
 )
 

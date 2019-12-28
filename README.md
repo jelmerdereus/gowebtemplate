@@ -49,7 +49,7 @@ you need to have the following environment variables or cli flags to connect to 
 * pgpass
 
 ## Getting started
-in the main function, you can see that the environment variables are parsed and that an ORM instance was provided to the RunApp function that specifies all the current routes. the `GetParams` function can be adapted to your needs.
+in the main function, you can see that the environment variables are parsed and that an ORM instance was provided to the RunApp function.
 
 
 ```go
@@ -76,7 +76,7 @@ func main() {
 }
 ```
 
-the `RunApp` function specifies all the routes and starts the application
+the `GetParams` function can be adapted to your needs with regards to environment variables. the `RunApp` function specifies all the routes and starts the application.
 
 ```go
 //RunApp is responsible for running the web application

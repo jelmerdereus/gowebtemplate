@@ -1,7 +1,7 @@
 package datastore
 
 import (
-	"github.com/jelmerdereus/goweb3/models"
+	"github.com/jelmerdereus/gowebtemplate/models"
 	"github.com/jinzhu/gorm"
 )
 
@@ -32,7 +32,7 @@ func (orm *DBORM) GetUserByID(id int) (user models.User, err error) {
 }
 
 // AddUser adds a User object to the database and returns the user
-func (orm *DBORM) AddUser(newUser models.User) (user models.User, err error) {
+func (orm *DBORM) AddUser(newUser models.User) (models.User, error) {
 	return newUser, orm.Create(&newUser).Error
 }
 
@@ -41,7 +41,22 @@ func (orm *DBORM) UpdateUser(user *models.User) error {
 	return orm.Save(user).Error
 }
 
-// DeleteUser deletes a User object and returns it
+// DeleteUser deletes a User object and returns the object with DeletedAt timestamp
 func (orm *DBORM) DeleteUser(user models.User) error {
 	return orm.Delete(&user).Error
+}
+
+// GetAllEvents returns all events
+func (orm *DBORM) GetAllEvents() (events []models.Event, err error) {
+	return events, orm.Find(&events).Error
+}
+
+// GetEventByID returns an event or an error
+func (orm *DBORM) GetEventByID(id int) (event models.Event, err error) {
+	return event, orm.First(&event, &models.Event{Model: gorm.Model{ID: uint(id)}}).Error
+}
+
+// AddEvent adds an event and returns it
+func (orm *DBORM) AddEvent(event models.Event) (models.Event, error) {
+	return event, orm.Create(&event).Error
 }

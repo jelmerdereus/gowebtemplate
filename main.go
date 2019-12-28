@@ -8,20 +8,26 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jelmerdereus/goweb3/cli"
-	"github.com/jelmerdereus/goweb3/controllers"
-	"github.com/jelmerdereus/goweb3/datastore"
+	"github.com/jelmerdereus/gowebtemplate/cli"
+	"github.com/jelmerdereus/gowebtemplate/controllers"
+	"github.com/jelmerdereus/gowebtemplate/datastore"
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 //RunApp is responsible for running the web application
 func RunApp(address string, orm *datastore.DBORM) error {
-	// root URL
+	// root handler
 	rootCtr := controllers.GetRoot
 
-	// user API
+	// user api handler
 	users, err := controllers.NewUserHandle(orm)
+	if err != nil {
+		return err
+	}
+
+	// event handler
+	events, err := controllers.NewEventHandle(orm)
 	if err != nil {
 		return err
 	}
@@ -29,11 +35,22 @@ func RunApp(address string, orm *datastore.DBORM) error {
 	// routing
 	r := gin.Default()
 	r.GET("/", rootCtr)
-	r.GET("/users", users.GetAll)
-	r.GET("/users/:alias", users.GetByAlias)
-	r.POST("/users", users.Create)
-	r.PUT("/users/:id", users.Update)
-	r.DELETE("/users/:id", users.Delete)
+
+	userRoute := r.Group("/users")
+	{
+		userRoute.GET("/", users.GetAll)
+		userRoute.GET("/:alias", users.GetByAlias)
+		userRoute.POST("/", users.Create)
+		userRoute.PUT("/:id", users.Update)
+		userRoute.DELETE("/:id", users.Delete)
+	}
+
+	eventRoute := r.Group("/events")
+	{
+		eventRoute.GET("/", events.GetAll)
+		eventRoute.POST("/", events.Create)
+		eventRoute.GET("/:id", events.GetByID)
+	}
 
 	// run the application
 	return http.ListenAndServe(address, r)

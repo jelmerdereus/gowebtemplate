@@ -1,15 +1,21 @@
 package datastore
 
 import (
-	"github.com/jelmerdereus/goweb3/models"
+	"github.com/jelmerdereus/gowebtemplate/models"
 )
 
 //DBLayer is the abstraction layer for the database
 type DBLayer interface {
-	GetAllUsers() (users []models.User, err error)
-	GetUserByAlias(alias string) (user models.User, err error)
-	GetUserByID(id int) (user models.User, err error)
-	AddUser(models.User) (user models.User, err error)
-	UpdateUser(user *models.User) error
-	DeleteUser(user models.User) error
+	// Users
+	GetAllUsers() ([]models.User, error)
+	GetUserByAlias(alias string) (models.User, error)
+	GetUserByID(id int) (models.User, error)
+	AddUser(models.User) (models.User, error)
+	UpdateUser(*models.User) error
+	DeleteUser(models.User) error
+
+	// Events
+	GetAllEvents() ([]models.Event, error)
+	GetEventByID(id int) (models.Event, error)
+	AddEvent(models.Event) (models.Event, error)
 }

@@ -7,90 +7,105 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jelmerdereus/goweb3/datastore"
-	"github.com/jelmerdereus/goweb3/models"
+	"github.com/jelmerdereus/gowebtemplate/datastore"
+	"github.com/jelmerdereus/gowebtemplate/models"
 )
 
-//UserHandle contains the orm layer for User objects
-type UserHandle struct {
-	Handle
-}
-
 //NewUserHandle takes an ORM and returns a UserHandle
-func NewUserHandle(orm *datastore.DBORM) (*UserHandle, error) {
+func NewUserHandle(orm *datastore.DBORM) (*Handle, error) {
 	if orm == nil {
 		return nil, errors.New("No ORM provided")
 	}
 	orm.AutoMigrate(&models.User{})
-	return &UserHandle{Handle: Handle{DB: orm}}, nil
+	return &Handle{DB: orm}, nil
 }
 
 // GetAll returns an array of all users
-func (u *UserHandle) GetAll(c *gin.Context) {
-	users, err := u.DB.GetAllUsers()
+func (h *Handle) GetAll(c *gin.Context) {
+	action := "Users.GetAll"
+	users, err := h.DB.GetAllUsers()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("Users.GetAll", "DBError", err))
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
-	c.JSON(http.StatusAccepted, SuccessResponse("User.GetAll", users))
+	c.JSON(http.StatusAccepted, SuccessResponse(action, users))
 }
 
 // GetByAlias returns a user with a certain alias
-func (u *UserHandle) GetByAlias(c *gin.Context) {
-	user, err := u.DB.GetUserByAlias(c.Param("alias"))
+func (h *Handle) GetByAlias(c *gin.Context) {
+	action := "User.GetByAlias"
+	user, err := h.DB.GetUserByAlias(c.Param("alias"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("User.GetByAlias", "DBError", err))
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
-	c.JSON(http.StatusAccepted, SuccessResponse("User.GetByAlias", user))
+	c.JSON(http.StatusAccepted, SuccessResponse(action, user))
 }
 
 // GetByID returns a user with a certain id
-func (u *UserHandle) GetByID(c *gin.Context) {
+func (h *Handle) GetByID(c *gin.Context) {
+	action := "User.GetByID"
 	idstring, ok := c.Params.Get("id")
 	if !ok {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.GetByID", "InputError", errors.New("parameter id is required")))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id is required")))
 		return
 	}
 	userid, err := strconv.Atoi(idstring)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.GetByID", "InputError", errors.New("parameter id is invalid")))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id is invalid")))
 		return
 	}
-	user, err := u.DB.GetUserByID(userid)
+	user, err := h.DB.GetUserByID(userid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("User.GetByID", "DBError", err))
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
-	c.JSON(http.StatusAccepted, SuccessResponse("User.GetByID", user))
+	c.JSON(http.StatusAccepted, SuccessResponse(action, user))
 }
 
 // Create adds a user and returns it
-func (u *UserHandle) Create(c *gin.Context) {
+func (h *Handle) Create(c *gin.Context) {
+	action := "User.Create"
 	var user models.User
+
+	// parse the object
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Create", "InputError", err))
-		return
-	}
-	user, err := u.DB.AddUser(user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("User.Create", "DBError", err))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
 		return
 	}
 
-	c.JSON(http.StatusCreated, SuccessResponse("User.Create", user))
+	// add the user to the database
+	user, err := h.DB.AddUser(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
+		return
+	}
+
+	// transmit the response
+	c.JSON(http.StatusCreated, SuccessResponse(action, user))
+
+	// add an event to the database
+	h.DB.AddEvent(models.Event{
+		UserID:  user.ID,
+		Action:  action,
+		Type:    "DB",
+		Message: "success",
+	})
 }
 
 //Update updates the properties of a user
-func (u *UserHandle) Update(c *gin.Context) {
+func (h *Handle) Update(c *gin.Context) {
+	action := "User.Update"
+
+	// input validation
 	idParam := c.Param("id")
 	if idParam == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Update", "InputError", errors.New("parameter id not provided")))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id not provided")))
 		return
 	}
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Update", "InputError", errors.New("parameter id invalid")))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id invalid")))
 		return
 	}
 
@@ -98,31 +113,33 @@ func (u *UserHandle) Update(c *gin.Context) {
 
 	// verify that the body can be parsed
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Update", "InputError", err))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
 		return
 	}
 
 	// find the user
-	if _, err := u.DB.GetUserByID(id); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Update", "DBError", err))
+	if _, err := h.DB.GetUserByID(id); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
 		return
 	}
 
 	// update the user
-	if err := u.DB.UpdateUser(&user); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("User.Update", "DBError", err))
+	if err := h.DB.UpdateUser(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
 
-	c.JSON(http.StatusAccepted, SuccessResponse("User.Update", user))
+	c.JSON(http.StatusAccepted, SuccessResponse(action, user))
 }
 
 // Delete deletes a user
-func (u *UserHandle) Delete(c *gin.Context) {
+func (h *Handle) Delete(c *gin.Context) {
+	action := "User.Delete"
+
 	// input validation
 	idParam := c.Param("id")
 	if idParam == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Update", "InputError", errors.New("parameter id not provided")))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id not provided")))
 		return
 	}
 
@@ -130,24 +147,24 @@ func (u *UserHandle) Delete(c *gin.Context) {
 
 	userid, err := strconv.Atoi(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse("User.Delete", "InputError", errors.New("parameter id invalid")))
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id invalid")))
 		return
 	}
 
 	// find the user
-	user, err = u.DB.GetUserByID(userid)
+	user, err = h.DB.GetUserByID(userid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("User.Delete", "DBError", err))
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
 
 	// delete it
-	if err := u.DB.DeleteUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse("User.Delete", "DBError", err))
+	if err := h.DB.DeleteUser(user); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
 	var deleted = time.Now().UTC()
 	user.DeletedAt = &deleted
 
-	c.JSON(http.StatusAccepted, SuccessResponse("User.Delete", user))
+	c.JSON(http.StatusAccepted, SuccessResponse(action, user))
 }
