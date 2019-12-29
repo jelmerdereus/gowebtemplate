@@ -21,13 +21,13 @@ func RunApp(address string, orm *datastore.DBORM) error {
 	rootCtr := controllers.GetRoot
 
 	// user api handler
-	users, err := controllers.NewUserHandle(orm)
+	users, err := controllers.NewUserAPI(orm)
 	if err != nil {
 		return err
 	}
 
-	// event handler
-	events, err := controllers.NewEventHandle(orm)
+	// event api handler
+	events, err := controllers.NewEventAPI(orm)
 	if err != nil {
 		return err
 	}
@@ -50,6 +50,8 @@ func RunApp(address string, orm *datastore.DBORM) error {
 		eventRoute.GET("/", events.GetAll)
 		eventRoute.POST("/", events.Create)
 		eventRoute.GET("/:id", events.GetByID)
+		eventRoute.PUT("/:id", events.Update)
+		eventRoute.DELETE("/:id", events.Delete)
 	}
 
 	// run the application

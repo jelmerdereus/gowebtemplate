@@ -6,7 +6,16 @@ import (
 	"net/http"
 )
 
-//Handle contains the orm layer
+//RESTAPI is an interface for implementation by REST controllers
+type RESTAPI interface {
+	GetAll(c *gin.Context)
+	GetByID(c *gin.Context)
+	Create(c *gin.Context)
+	Update(c *gin.Context)
+	Delete(c *gin.Context)
+}
+
+//Handle contains the orm layer and is embedded by the implementations of RESTAPI
 type Handle struct {
 	DB datastore.DBLayer
 }

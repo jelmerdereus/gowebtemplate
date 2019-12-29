@@ -4,41 +4,30 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jelmerdereus/gowebtemplate/datastore"
 	"github.com/jelmerdereus/gowebtemplate/models"
 )
 
+// EventAPI is the interface for the Event REST methods
+type EventAPI interface {
+	RESTAPI
+}
+
 //EventHandle contains the orm layer for User objects
 type EventHandle struct {
 	Handle
 }
 
-//NewEventHandle takes an ORM and returns an NewEventHandle
-func NewEventHandle(orm *datastore.DBORM) (*EventHandle, error) {
+//NewEventAPI takes an ORM and returns an NewEventHandle
+func NewEventAPI(orm *datastore.DBORM) (EventAPI, error) {
 	if orm == nil {
 		return nil, errors.New("No ORM provided")
 	}
 	orm.AutoMigrate(&models.Event{})
 	return &EventHandle{Handle: Handle{DB: orm}}, nil
-}
-
-//Create creates an Event
-func (e *EventHandle) Create(c *gin.Context) {
-	action := "Event.Create"
-	var event models.Event
-	if err := c.ShouldBindJSON(&event); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
-		return
-	}
-	user, err := e.DB.AddEvent(event)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
-		return
-	}
-
-	c.JSON(http.StatusCreated, SuccessResponse(action, user))
 }
 
 //GetAll gets all events
@@ -72,5 +61,100 @@ func (e *EventHandle) GetByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBerror", err))
 		return
 	}
+	c.JSON(http.StatusAccepted, SuccessResponse(action, event))
+}
+
+//Create creates an Event
+func (e *EventHandle) Create(c *gin.Context) {
+	action := "Event.Create"
+
+	var event models.Event
+	if err := c.ShouldBindJSON(&event); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
+		return
+	}
+	event, err := e.DB.AddEvent(event)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
+		return
+	}
+
+	c.JSON(http.StatusCreated, SuccessResponse(action, event))
+}
+
+//Update updates an Event and returns it
+func (e *EventHandle) Update(c *gin.Context) {
+	action := "Event.Update"
+
+	// id parameter validation
+	idString := c.Param("id")
+	if idString == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("param id is required")))
+		return
+	}
+
+	id, err := strconv.Atoi(idString)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("param id is invalid")))
+		return
+	}
+
+	// parse the body
+	var updatedEvent models.Event
+	if err = c.ShouldBindJSON(&updatedEvent); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
+		return
+	}
+
+	// find the event
+	event, err := e.DB.GetEventByID(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
+		return
+	}
+
+	// update it
+	if err = e.DB.UpdateEvent(event); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
+		return
+	}
+
+	c.JSON(http.StatusAccepted, SuccessResponse(action, event))
+}
+
+//Delete deletes an event and returns the object
+func (e *EventHandle) Delete(c *gin.Context) {
+	action := "Event.Delete"
+
+	// id parameter validation
+	idString := c.Param("id")
+	if idString == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("param id is required")))
+		return
+	}
+
+	id, err := strconv.Atoi(idString)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("param id is invalid")))
+		return
+	}
+
+	// find the event
+	event, err := e.DB.GetEventByID(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
+		return
+	}
+
+	// delete it
+	err = e.DB.DeleteEvent(&event)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
+		return
+	}
+
+	var deleted = time.Now().UTC()
+	event.DeletedAt = &deleted
+
 	c.JSON(http.StatusAccepted, SuccessResponse(action, event))
 }

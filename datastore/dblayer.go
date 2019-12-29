@@ -18,4 +18,6 @@ type DBLayer interface {
 	GetAllEvents() ([]models.Event, error)
 	GetEventByID(id int) (models.Event, error)
 	AddEvent(models.Event) (models.Event, error)
+	UpdateEvent(models.Event) error
+	DeleteEvent(*models.Event) error
 }

@@ -60,3 +60,13 @@ func (orm *DBORM) GetEventByID(id int) (event models.Event, err error) {
 func (orm *DBORM) AddEvent(event models.Event) (models.Event, error) {
 	return event, orm.Create(&event).Error
 }
+
+// UpdateEvent updates an Event object
+func (orm *DBORM) UpdateEvent(event models.Event) error {
+	return orm.Save(event).Error
+}
+
+//DeleteEvent deletes an event object and returns it
+func (orm *DBORM) DeleteEvent(event *models.Event) error {
+	return orm.Delete(&event).Error
+}

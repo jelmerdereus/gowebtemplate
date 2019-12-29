@@ -48,7 +48,59 @@ you need to have the following environment variables or cli flags to connect to 
 * pguser
 * pgpass
 
+
+## Design
+There is an interface for REST API handlers that is extended by subinterfaces to add additional methods.
+The `GetAll` method does not have to mean 'get all'. It can for instance have a limit and handle filter criteria.
+
+There is also a datastore.DBLayer interface for abstracting database operations
+
+```go
+//RESTAPI is an interface for implementation by REST controllers
+type RESTAPI interface {
+	GetAll(c *gin.Context)
+	GetByID(c *gin.Context)
+	Create(c *gin.Context)
+	Update(c *gin.Context)
+	Delete(c *gin.Context)
+}
+
+//Handle contains the orm layer and is embedded by the implementations of RESTAPI
+type Handle struct {
+	DB datastore.DBLayer
+}
+```
+
+The User and Event APIs have their own implementation of these types like for the User object
+
+```go
+//UserAPI is the interface for the user API
+type UserAPI interface {
+	RESTAPI
+
+	//additional methods
+	GetByAlias(c *gin.Context)
+}
+
+//UserHandle is a handle for the user API
+type UserHandle struct {
+	Handle
+}
+
+//NewUserAPI takes an ORM and returns a UserAPI
+func NewUserAPI(orm *datastore.DBORM) (UserAPI, error) {
+	if orm == nil {
+		return nil, errors.New("No ORM provided")
+	}
+	orm.AutoMigrate(&models.User{})
+	return &UserHandle{Handle: Handle{DB: orm}}, nil
+}
+```
+
+
 ## Getting started
+
+
 in the main function, you can see that the environment variables are parsed and that an ORM instance was provided to the RunApp function.
 
 
@@ -76,16 +128,25 @@ func main() {
 }
 ```
 
-the `GetParams` function can be adapted to your needs with regards to environment variables. the `RunApp` function specifies all the routes and starts the application.
+the `GetParams` function can be adapted to your needs with regards to environment variables and cli flags.
+
+
+the `RunApp` function below specifies all the routes and starts the application.
 
 ```go
 //RunApp is responsible for running the web application
 func RunApp(address string, orm *datastore.DBORM) error {
-	// root URL
+	// root handler
 	rootCtr := controllers.GetRoot
 
-	// user API
+	// user api handler
 	users, err := controllers.NewUserHandle(orm)
+	if err != nil {
+		return err
+	}
+
+	// event handler
+	events, err := controllers.NewEventHandle(orm)
 	if err != nil {
 		return err
 	}
@@ -93,11 +154,22 @@ func RunApp(address string, orm *datastore.DBORM) error {
 	// routing
 	r := gin.Default()
 	r.GET("/", rootCtr)
-	r.GET("/users", users.GetAll)
-	r.GET("/users/:alias", users.GetByAlias)
-	r.POST("/users", users.Create)
-	r.PUT("/users/:id", users.Update)
-	r.DELETE("/users/:id", users.Delete)
+
+	userRoute := r.Group("/users")
+	{
+		userRoute.GET("/", users.GetAll)
+		userRoute.GET("/:alias", users.GetByAlias)
+		userRoute.POST("/", users.Create)
+		userRoute.PUT("/:id", users.Update)
+		userRoute.DELETE("/:id", users.Delete)
+	}
+
+	eventRoute := r.Group("/events")
+	{
+		eventRoute.GET("/", events.GetAll)
+		eventRoute.POST("/", events.Create)
+		eventRoute.GET("/:id", events.GetByID)
+	}
 
 	// run the application
 	return http.ListenAndServe(address, r)

@@ -11,19 +11,32 @@ import (
 	"github.com/jelmerdereus/gowebtemplate/models"
 )
 
-//NewUserHandle takes an ORM and returns a UserHandle
-func NewUserHandle(orm *datastore.DBORM) (*Handle, error) {
+//UserAPI is the interface for the user API
+type UserAPI interface {
+	RESTAPI
+
+	//additional methods
+	GetByAlias(c *gin.Context)
+}
+
+//UserHandle is a handle for the user API
+type UserHandle struct {
+	Handle
+}
+
+//NewUserAPI takes an ORM and returns a RESTAPI
+func NewUserAPI(orm *datastore.DBORM) (UserAPI, error) {
 	if orm == nil {
 		return nil, errors.New("No ORM provided")
 	}
 	orm.AutoMigrate(&models.User{})
-	return &Handle{DB: orm}, nil
+	return &UserHandle{Handle: Handle{DB: orm}}, nil
 }
 
 // GetAll returns an array of all users
-func (h *Handle) GetAll(c *gin.Context) {
+func (u *UserHandle) GetAll(c *gin.Context) {
 	action := "Users.GetAll"
-	users, err := h.DB.GetAllUsers()
+	users, err := u.DB.GetAllUsers()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
@@ -32,9 +45,9 @@ func (h *Handle) GetAll(c *gin.Context) {
 }
 
 // GetByAlias returns a user with a certain alias
-func (h *Handle) GetByAlias(c *gin.Context) {
+func (u *UserHandle) GetByAlias(c *gin.Context) {
 	action := "User.GetByAlias"
-	user, err := h.DB.GetUserByAlias(c.Param("alias"))
+	user, err := u.DB.GetUserByAlias(c.Param("alias"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
@@ -43,7 +56,7 @@ func (h *Handle) GetByAlias(c *gin.Context) {
 }
 
 // GetByID returns a user with a certain id
-func (h *Handle) GetByID(c *gin.Context) {
+func (u *UserHandle) GetByID(c *gin.Context) {
 	action := "User.GetByID"
 	idstring, ok := c.Params.Get("id")
 	if !ok {
@@ -55,7 +68,7 @@ func (h *Handle) GetByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", errors.New("parameter id is invalid")))
 		return
 	}
-	user, err := h.DB.GetUserByID(userid)
+	user, err := u.DB.GetUserByID(userid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
@@ -64,7 +77,7 @@ func (h *Handle) GetByID(c *gin.Context) {
 }
 
 // Create adds a user and returns it
-func (h *Handle) Create(c *gin.Context) {
+func (u *UserHandle) Create(c *gin.Context) {
 	action := "User.Create"
 	var user models.User
 
@@ -75,7 +88,7 @@ func (h *Handle) Create(c *gin.Context) {
 	}
 
 	// add the user to the database
-	user, err := h.DB.AddUser(user)
+	user, err := u.DB.AddUser(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
@@ -83,18 +96,10 @@ func (h *Handle) Create(c *gin.Context) {
 
 	// transmit the response
 	c.JSON(http.StatusCreated, SuccessResponse(action, user))
-
-	// add an event to the database
-	h.DB.AddEvent(models.Event{
-		UserID:  user.ID,
-		Action:  action,
-		Type:    "DB",
-		Message: "success",
-	})
 }
 
 //Update updates the properties of a user
-func (h *Handle) Update(c *gin.Context) {
+func (u *UserHandle) Update(c *gin.Context) {
 	action := "User.Update"
 
 	// input validation
@@ -118,13 +123,13 @@ func (h *Handle) Update(c *gin.Context) {
 	}
 
 	// find the user
-	if _, err := h.DB.GetUserByID(id); err != nil {
+	if _, err := u.DB.GetUserByID(id); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
 		return
 	}
 
 	// update the user
-	if err := h.DB.UpdateUser(&user); err != nil {
+	if err := u.DB.UpdateUser(&user); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
@@ -133,7 +138,7 @@ func (h *Handle) Update(c *gin.Context) {
 }
 
 // Delete deletes a user
-func (h *Handle) Delete(c *gin.Context) {
+func (u *UserHandle) Delete(c *gin.Context) {
 	action := "User.Delete"
 
 	// input validation
@@ -152,14 +157,14 @@ func (h *Handle) Delete(c *gin.Context) {
 	}
 
 	// find the user
-	user, err = h.DB.GetUserByID(userid)
+	user, err = u.DB.GetUserByID(userid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
 
 	// delete it
-	if err := h.DB.DeleteUser(user); err != nil {
+	if err := u.DB.DeleteUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
 	}
