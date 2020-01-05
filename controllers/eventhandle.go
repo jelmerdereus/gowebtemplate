@@ -18,23 +18,19 @@ type EventAPI interface {
 
 //EventHandle contains the orm layer for User objects
 type EventHandle struct {
-	Handle
+	Repo datastore.EventRepo
 }
 
 //NewEventAPI takes an ORM and returns an NewEventHandle
-func NewEventAPI(orm *datastore.DBORM) (EventAPI, error) {
-	if orm == nil {
-		return nil, errors.New("No ORM provided")
-	}
-	orm.AutoMigrate(&models.Event{})
-	return &EventHandle{Handle: Handle{DB: orm}}, nil
+func NewEventAPI(repo datastore.EventRepo) EventAPI {
+	return &EventHandle{Repo: repo}
 }
 
 //GetAll gets all events
 func (e *EventHandle) GetAll(c *gin.Context) {
 	action := "Event.GetAll"
 
-	events, err := e.DB.GetAllEvents()
+	events, err := e.Repo.GetAllEvents()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBerror", err))
 		return
@@ -56,7 +52,7 @@ func (e *EventHandle) GetByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
 		return
 	}
-	event, err := e.DB.GetEventByID(id)
+	event, err := e.Repo.GetEventByID(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBerror", err))
 		return
@@ -73,7 +69,7 @@ func (e *EventHandle) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "InputError", err))
 		return
 	}
-	event, err := e.DB.AddEvent(event)
+	event, err := e.Repo.AddEvent(event)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse(action, "DBError", err))
 		return
@@ -107,14 +103,14 @@ func (e *EventHandle) Update(c *gin.Context) {
 	}
 
 	// find the event
-	event, err := e.DB.GetEventByID(id)
+	event, err := e.Repo.GetEventByID(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
 		return
 	}
 
 	// update it
-	if err = e.DB.UpdateEvent(event); err != nil {
+	if err = e.Repo.UpdateEvent(event); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
 		return
 	}
@@ -140,14 +136,14 @@ func (e *EventHandle) Delete(c *gin.Context) {
 	}
 
 	// find the event
-	event, err := e.DB.GetEventByID(id)
+	event, err := e.Repo.GetEventByID(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
 		return
 	}
 
 	// delete it
-	err = e.DB.DeleteEvent(&event)
+	err = e.Repo.DeleteEvent(&event)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse(action, "DBError", err))
 		return

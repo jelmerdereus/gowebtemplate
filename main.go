@@ -17,17 +17,26 @@ import (
 
 //RunApp is responsible for running the web application
 func RunApp(address string, orm *datastore.DBORM) error {
-	// root handler
+	// repos
+	eventRepo, err := datastore.NewEventRepo(orm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	userRepo, err := datastore.NewUserRepo(orm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// apis
 	rootCtr := controllers.GetRoot
 
-	// user api handler
-	users, err := controllers.NewUserAPI(orm)
+	events := controllers.NewEventAPI(eventRepo)
 	if err != nil {
 		return err
 	}
 
-	// event api handler
-	events, err := controllers.NewEventAPI(orm)
+	users := controllers.NewUserAPI(userRepo)
 	if err != nil {
 		return err
 	}
