@@ -41,7 +41,7 @@ type RESTAPI interface {
 
 // GetRoot handles requests to the root url
 func GetRoot(c *gin.Context) {
-	c.JSON(http.StatusAccepted, SuccessResponse("GetRoot", "Hello, World!"))
+	c.JSON(http.StatusOK, SuccessResponse("GetRoot", "Hello, World!"))
 }
 
 //SuccessResponse returns a map that can be given as an argument to c.JSON
